@@ -122,8 +122,6 @@ function handleShutdown(server, port) {
 
   shuttingDown = true;
 
-  // The shutdown line is written before the close sequence starts, and the
-  // process stays alive until the stream has accepted it.
   writeLine(process.stdout, `Shutting down server on port ${port}`, () => {
     server.close(() => {
       process.exit(0);
