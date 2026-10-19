@@ -31,19 +31,20 @@ function resolvePort(rawValue) {
     return { port: DEFAULT_PORT, error: null };
   }
 
-  const rangeError = `Invalid PORT value "${raw}": PORT must be an integer between 1024 and 65535`;
+  const rangeError = `Invalid PORT value "${raw}": PORT must be an integer between ${MIN_PORT} and ${MAX_PORT}`;
 
-  // Only digits are accepted, so 'abc' and '3000.5' are rejected instead of being
-  // coerced. Leading zeros are allowed and resolve to the same integer ('03000'
-  // becomes 3000).
-  if (!/^[0-9]+$/.test(trimmed)) {
+  // The value must be digits, optionally with a leading minus, so 'abc' and
+  // '3000.5' are rejected instead of being coerced. Leading zeros are allowed
+  // and resolve to the same integer ('03000' becomes 3000); a negative value is
+  // an integer below MIN_PORT and takes the privileged-port message.
+  if (!/^-?[0-9]+$/.test(trimmed)) {
     return { port: null, error: `${rangeError}.` };
   }
 
   const port = Number(trimmed);
 
   if (port < MIN_PORT) {
-    return { port: null, error: `${rangeError}; ports below 1024 are privileged.` };
+    return { port: null, error: `${rangeError}; ports below ${MIN_PORT} are privileged.` };
   }
 
   if (port > MAX_PORT) {
