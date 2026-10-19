@@ -89,17 +89,29 @@ function handleRequest(req, res) {
   handleNotFound(req, res);
 }
 
+// A line handed to a piped stdout or stderr is written asynchronously, so it may
+// not have reached the kernel when the write call returns. The write callback
+// fires once the stream has accepted the line, which is when a process whose
+// next step is to exit should run that step.
+function writeLine(stream, message, onWritten) {
+  stream.write(`${message}\n`, onWritten);
+}
+
 function handleBindError(error, port) {
   if (error.code === 'EADDRINUSE') {
-    console.error(
+    writeLine(
+      process.stderr,
       `Failed to bind port ${port}: address already in use (EADDRINUSE). ` +
-        'Stop the process using that port or set PORT to a free port.'
+        'Stop the process using that port or set PORT to a free port.',
+      () => process.exit(1)
     );
   } else {
-    console.error(`Failed to bind port ${port}: ${error.code} - ${error.message}`);
+    writeLine(
+      process.stderr,
+      `Failed to bind port ${port}: ${error.code} - ${error.message}`,
+      () => process.exit(1)
+    );
   }
-
-  process.exit(1);
 }
 
 function handleShutdown(server, port) {
@@ -110,25 +122,30 @@ function handleShutdown(server, port) {
 
   shuttingDown = true;
 
-  console.log(`Shutting down server on port ${port}`);
+  // The shutdown line is written before the close sequence starts, and the
+  // process stays alive until the stream has accepted it.
+  writeLine(process.stdout, `Shutting down server on port ${port}`, () => {
+    server.close(() => {
+      process.exit(0);
+    });
 
-  server.close(() => {
-    process.exit(0);
+    // Idle keep-alive sockets would otherwise hold close() open; the method needs
+    // Node.js 18.2.0 while the declared floor is 18.0.0, hence the guard.
+    if (typeof server.closeIdleConnections === 'function') {
+      server.closeIdleConnections();
+    }
   });
-
-  // Idle keep-alive sockets would otherwise hold close() open; the method needs
-  // Node.js 18.2.0 while the declared floor is 18.0.0, hence the guard.
-  if (typeof server.closeIdleConnections === 'function') {
-    server.closeIdleConnections();
-  }
 }
 
 function startServer() {
   const { port, error } = resolvePort(process.env.PORT);
 
   if (error) {
-    console.error(error);
-    process.exit(1);
+    writeLine(process.stderr, error, () => process.exit(1));
+
+    // The rejected PORT never reaches listen(), so no socket is opened; the write
+    // above is what ends the process with status 1.
+    return;
   }
 
   const server = http.createServer(handleRequest);
