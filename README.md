@@ -181,7 +181,7 @@ Stop the server with `CTRL+C` (the `SIGINT` signal) in the terminal where it run
 Shutting down server on port 3000
 ```
 
-The shutdown sequence stops accepting new connections, lets responses already in flight finish, closes idle keep-alive connections so the process does not linger, and exits with status `0`. A second `CTRL+C` while that shutdown is already underway does nothing and does not log the line again.
+The shutdown sequence stops accepting new connections, lets responses already in flight finish, closes idle keep-alive connections where the runtime provides `server.closeIdleConnections()` (Node.js 18.2.0 and above), so the process does not linger on such a release, and exits with status `0`. A second `CTRL+C` while that shutdown is already underway does nothing and does not log the line again.
 
 To confirm the exit status without a terminal, start the server in the background, signal it and read the status of the process:
 
@@ -258,5 +258,7 @@ Failed to bind port 3000: address already in use (EADDRINUSE). Stop the process 
 ```
 
 To reproduce that, start the server in one terminal and then start a second instance in another; the second one prints the message above and exits `1`. The port named in the message is the port it tried to bind.
+
+A listen error other than `EADDRINUSE` is reported on standard error in the form `Failed to bind port <port>: <code> - <message>`, where `<code>` is the error code and `<message>` its message, so a descriptor limit (`EMFILE`), a permission failure (`EACCES`) or an unavailable address (`EADDRNOTAVAIL`) appears in that form and the process exits with status `1` as well.
 
 Ports are the only thing this server configures from the environment. It accepts no command-line arguments or flags, and it reads no configuration file.
