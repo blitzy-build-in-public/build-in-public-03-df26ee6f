@@ -64,6 +64,8 @@ With `npm start`, npm prints its own two-line script banner before the server's 
 
 Those two lines are npm's output, not the application's. The server's first line is the startup line shown under [Expected Output](#expected-output). Both commands run in the foreground and keep running until you stop them.
 
+The listener binds the loopback address `127.0.0.1`, so the server answers only requests that originate on the same machine — the `localhost` URLs used throughout this README are exactly how it is reached, and requests from any other host cannot reach it.
+
 ## Testing
 
 There is no automated test suite: the project deliberately ships no test framework, no `npm test` script and no `tests` directory. Verify the server by hand with `curl` while it runs in the foreground.

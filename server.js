@@ -27,21 +27,19 @@ function resolvePort(rawValue) {
   const raw = typeof rawValue === 'string' ? rawValue : '';
   const trimmed = raw.trim();
 
-  if (trimmed === '') {
-    return { port: DEFAULT_PORT, error: null };
-  }
-
   const rangeError = `Invalid PORT value "${raw}": PORT must be an integer between ${MIN_PORT} and ${MAX_PORT}`;
 
-  // The value must be digits, optionally with a leading minus, so 'abc' and
-  // '3000.5' are rejected instead of being coerced. Leading zeros are allowed
-  // and resolve to the same integer ('03000' becomes 3000); a negative value is
-  // an integer below MIN_PORT and takes the privileged-port message.
-  if (!/^-?[0-9]+$/.test(trimmed)) {
+  // A blank value skips this test and takes the default below; any other value
+  // must be digits, optionally with a leading minus, so 'abc' and '3000.5' are
+  // rejected instead of being coerced. Leading zeros are allowed and resolve to
+  // the same integer ('03000' becomes 3000); a negative value is an integer
+  // below MIN_PORT and takes the privileged-port message.
+  if (trimmed !== '' && !/^-?[0-9]+$/.test(trimmed)) {
     return { port: null, error: `${rangeError}.` };
   }
 
-  const port = Number(trimmed);
+  // The default goes through the same comparisons below as any other value.
+  const port = trimmed === '' ? DEFAULT_PORT : Number(trimmed);
 
   if (port < MIN_PORT) {
     return { port: null, error: `${rangeError}; ports below ${MIN_PORT} are privileged.` };
@@ -156,7 +154,10 @@ function startServer() {
     handleShutdown(server, port);
   });
 
-  server.listen(port, () => {
+  // The tutorial has no authentication and serves two fixed public strings, and
+  // every URL the README documents is reached through localhost, so the listener
+  // is bound to loopback instead of every interface the machine exposes.
+  server.listen(port, '127.0.0.1', () => {
     console.log(`Server listening on port ${port}`);
   });
 }
